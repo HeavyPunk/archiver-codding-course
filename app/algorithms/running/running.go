@@ -52,11 +52,11 @@ func Compress(sourceFile *os.File, targetFileName string) error {
 		return err
 	}
 	for {
-		readed, err := sourceFile.Read(allocBuff)
+		read, err := sourceFile.Read(allocBuff)
 		if err == io.EOF {
 			break
 		}
-		buff := allocBuff[:readed]
+		buff := allocBuff[:read]
 		toWrite, err := compressArray(buff)
 		if err != nil {
 			return err

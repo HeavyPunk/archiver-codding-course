@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	algorithm_basic "kirieshki/running-archiver/app/algorithms/basic"
 	algorithm_running "kirieshki/running-archiver/app/algorithms/running"
 	"os"
 )
@@ -13,6 +14,8 @@ var actions = make(map[string]func(string, string))
 func main() {
 	compress_algorithms["running"] = algorithm_running.Compress
 	decompress_algorithms["running"] = algorithm_running.Decompress
+	compress_algorithms["basic"] = algorithm_basic.Compress
+	decompress_algorithms["basic"] = algorithm_basic.Decompress
 	actions["compress"] = compress
 	actions["decompress"] = decompress
 
