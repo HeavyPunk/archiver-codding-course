@@ -45,7 +45,7 @@ func decompressArray(arr []byte) (res []byte, err error) {
 	return res, nil
 }
 
-func Compress(sourceFile *os.File, targetFileName string) error {
+func Compress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	allocBuff := make([]byte, 100)
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {
@@ -69,7 +69,7 @@ func Compress(sourceFile *os.File, targetFileName string) error {
 	return nil
 }
 
-func Decompress(sourceFile *os.File, targetFileName string) error {
+func Decompress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	allocBuff := make([]byte, 100)
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {

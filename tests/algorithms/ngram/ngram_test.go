@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+var cleanUp = true
+
 func TestCreateNgrams(t *testing.T) {
 	file, err := os.Open("construct-ngrams-input")
 	if err != nil {
@@ -55,7 +57,7 @@ func TestWriteCompressedFile(t *testing.T) {
 		"de": "11",
 		"ef": "00",
 		"f":  "01",
-	})
+	}, cleanUp)
 }
 
 func TestDecompressFile(t *testing.T) {
@@ -64,7 +66,7 @@ func TestDecompressFile(t *testing.T) {
 		t.Errorf("Cannot open decompress-file-test-input: %v", err)
 		return
 	}
-	algorithm_ngram.Decompress(sourceFile, "decompress-file-test-result")
+	algorithm_ngram.Decompress(sourceFile, "decompress-file-test-result", cleanUp)
 }
 
 func TestFullTest(t *testing.T) {
@@ -73,7 +75,7 @@ func TestFullTest(t *testing.T) {
 		t.Errorf("Cannot open full-test-input-file: %v", err)
 		return
 	}
-	err = algorithm_ngram.Compress(sourceFile, "full-test-compressed-file")
+	err = algorithm_ngram.Compress(sourceFile, "full-test-compressed-file", cleanUp)
 	if err != nil {
 		t.Errorf("Error when compressing: %v", err)
 		return
@@ -84,7 +86,7 @@ func TestFullTest(t *testing.T) {
 		t.Errorf("Cannot open full-test-compressed-file: %v", err)
 		return
 	}
-	err = algorithm_ngram.Decompress(sourceFile, "full-test-result-file")
+	err = algorithm_ngram.Decompress(sourceFile, "full-test-result-file", cleanUp)
 	if err != nil {
 		t.Errorf("Error when decompress: %v", err)
 		return

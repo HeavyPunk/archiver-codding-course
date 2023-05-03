@@ -90,21 +90,26 @@ func CreateShannonCode(sourceProbabilities []GroupUnit, code map[int]string, key
 	CreateShannonCode(sourceProbabilities[pointer:], code, key_offset+pointer)
 }
 
-func Compress(sourceFile *os.File, targetFileName string) error {
+func Compress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	type kvp struct {
 		ngram string
 		count int
 		id    int
 	}
 	var ngrams = ConstructNgramDict(sourceFile)
-	var probList = make([]kvp, 1)
-	ngramId := 1
+	var probList = make([]kvp, 0)
 	for k, v := range ngrams {
-		probList = append(probList, kvp{k, v, ngramId})
-		ngramId++
+		probList = append(probList, kvp{ngram: k, count: v})
 	}
 
 	sort.Slice(probList, func(i, j int) bool { return probList[i].count > probList[j].count })
+
+	ngramId := 0
+	for i := range probList {
+		probList[i].id = ngramId
+		ngramId++
+	}
+
 	code := make(map[int]string)
 	CreateShannonCode(
 		utils_collections.Map(probList, func(s kvp) GroupUnit { return GroupUnit{Probability: s.count, Id: s.id} }),
@@ -116,11 +121,11 @@ func Compress(sourceFile *os.File, targetFileName string) error {
 		ngramToCode[probList[i].ngram] = code[probList[i].id]
 	}
 	sourceFile, _ = os.Open(sourceFile.Name())
-	WriteCompressedFile(targetFileName, sourceFile, ngramToCode)
+	WriteCompressedFile(targetFileName, sourceFile, ngramToCode, cleanUp)
 	return nil
 }
 
-func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[string]string) {
+func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[string]string, cleanUp bool) {
 	targetFile, _ := os.Create(targetFileName)
 	tempFileName := ".temp." + targetFileName
 	tempFile, _ := os.Create(tempFileName)
@@ -162,7 +167,7 @@ func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[st
 		for i, b := range buff {
 			offset++
 			if i%8 == 0 && i != 0 {
-				offset = 0
+				offset = 1
 				toWriteBuff = append(toWriteBuff, toWrite)
 				if len(toWriteBuff) == 100 {
 					targetFile.Write(toWriteBuff)
@@ -178,10 +183,12 @@ func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[st
 			}
 		}
 		targetFile.Write(toWriteBuff)
-		targetFile.Write([]byte{toWrite << (7 - byte(offset)), byte(offset)})
+		targetFile.Write([]byte{toWrite << (8 - byte(offset)), byte(offset)})
 	}
+	tempFile.Close()
 	sourceFile.Close()
 	targetFile.Close()
+	removeFileIfNeed(tempFileName, cleanUp)
 }
 
 func encodeCode(code map[string]string) []byte {
@@ -236,7 +243,7 @@ func restoreCode(sourceFile *os.File) map[string]string {
 	return res
 }
 
-func Decompress(sourceFile *os.File, targetFileName string) error {
+func Decompress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {
 		return err
@@ -244,21 +251,19 @@ func Decompress(sourceFile *os.File, targetFileName string) error {
 	tempFileName := ".temp." + targetFileName
 	tempFile, err := os.Create(tempFileName)
 	if err != nil {
+		removeFileIfNeed(tempFileName, cleanUp)
 		return err
 	}
-
 	table := restoreCode(sourceFile)
-	offsetBuff := make([]byte, 1)
-	sourceFile.Read(offsetBuff)
-	offset := offsetBuff[0]
-	offset++
 	allocBuff := make([]byte, 100)
+	var buff []byte
+	var totalWrote int64
 	for {
 		read, err := sourceFile.Read(allocBuff)
 		if err == io.EOF {
 			break
 		}
-		buff := allocBuff[:read]
+		buff = allocBuff[:read]
 		for _, b := range buff {
 			counter := 0
 			var toWrite string
@@ -278,18 +283,25 @@ func Decompress(sourceFile *os.File, targetFileName string) error {
 				counter++
 			}
 			tempFile.WriteString(toWrite)
+			totalWrote += int64(len(toWrite))
 		}
 	}
+	offset := int(buff[len(buff)-1])
 
 	tempFile, _ = os.Open(tempFileName)
 
 	allocBuff = make([]byte, 1)
+	var totalRead int64
 	var key string
 	for {
 		read, err := tempFile.Read(allocBuff)
 		if err == io.EOF {
 			break
 		}
+		if totalRead+int64(read) > totalWrote-int64(16-offset) {
+			read -= int(totalRead + int64(read) - totalWrote + int64(16-offset))
+		}
+		totalRead += int64(read)
 		buff := allocBuff[:read]
 
 		for _, b := range buff {
@@ -304,6 +316,14 @@ func Decompress(sourceFile *os.File, targetFileName string) error {
 			targetFile.WriteString(ngram)
 			key = ""
 		}
+	}
+	removeFileIfNeed(tempFileName, cleanUp)
+	return nil
+}
+
+func removeFileIfNeed(filename string, need bool) error {
+	if need {
+		return os.Remove(filename)
 	}
 	return nil
 }
