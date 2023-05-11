@@ -155,6 +155,9 @@ func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[st
 	}
 
 	tempFile, _ = os.Open(tempFileName)
+
+	var toWrite byte
+	offset := 0
 	for {
 		read, err := tempFile.Read(allocBuff)
 		if err == io.EOF {
@@ -162,11 +165,9 @@ func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[st
 		}
 		buff := allocBuff[:read]
 		toWriteBuff := make([]byte, 0)
-		var toWrite byte
-		offset := 0
-		for i, b := range buff {
+		for _, b := range buff {
 			offset++
-			if i%8 == 0 && i != 0 {
+			if offset%9 == 0 {
 				offset = 1
 				toWriteBuff = append(toWriteBuff, toWrite)
 				if len(toWriteBuff) == 100 {
@@ -183,8 +184,9 @@ func WriteCompressedFile(targetFileName string, sourceFile *os.File, code map[st
 			}
 		}
 		targetFile.Write(toWriteBuff)
-		targetFile.Write([]byte{toWrite << (8 - byte(offset)), byte(offset)})
 	}
+	targetFile.Write([]byte{toWrite << (8 - byte(offset)), byte(offset)})
+
 	tempFile.Close()
 	sourceFile.Close()
 	targetFile.Close()
