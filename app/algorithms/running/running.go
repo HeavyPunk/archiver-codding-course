@@ -45,18 +45,18 @@ func decompressArray(arr []byte) (res []byte, err error) {
 	return res, nil
 }
 
-func Compress(sourceFile *os.File, targetFileName string) error {
+func Compress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	allocBuff := make([]byte, 100)
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {
 		return err
 	}
 	for {
-		readed, err := sourceFile.Read(allocBuff)
+		read, err := sourceFile.Read(allocBuff)
 		if err == io.EOF {
 			break
 		}
-		buff := allocBuff[:readed]
+		buff := allocBuff[:read]
 		toWrite, err := compressArray(buff)
 		if err != nil {
 			return err
@@ -69,7 +69,7 @@ func Compress(sourceFile *os.File, targetFileName string) error {
 	return nil
 }
 
-func Decompress(sourceFile *os.File, targetFileName string) error {
+func Decompress(sourceFile *os.File, targetFileName string, cleanUp bool) error {
 	allocBuff := make([]byte, 100)
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {
